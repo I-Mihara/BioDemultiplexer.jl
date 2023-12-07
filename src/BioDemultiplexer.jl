@@ -1,5 +1,19 @@
 module BioDemultiplexer
 
-# Write your package code here.
+export
+    execute_demultiplexing,
+    single_demltplex,
+    mlt_demltplex,
+    divide_fastq,
+    preprocess_bc_file,
+    process_fastq_file,
+    write_fastq_entry,
+    determine_filemname,
+    classify_sequence,
+    semiglobal_alignment
+using Distributed
+@everywhere using DataFrames, CSV 
 
-end
+include("demultiplexer.jl")
+include("main.jl")
+end#module
