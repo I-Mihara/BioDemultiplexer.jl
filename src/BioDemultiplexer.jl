@@ -13,7 +13,6 @@ export
     semiglobal_alignment
 using Distributed
 @everywhere using DataFrames, CSV 
-
 include("demultiplexer.jl")
 include("main.jl")
 end#module
