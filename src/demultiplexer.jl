@@ -42,7 +42,7 @@
    
    """
    classify_sequence is a function that classifies a query string into a sequence string.
-      The function returns the number of the sequence string and whether the query string is assigned to multiple sequence strings.
+   The function returns the number of the sequence string and whether the query string is assigned to multiple sequence strings.
    """
    function classify_sequence(seq::String, bc_df::DataFrame,match::Int=0,mismatch::Int=-1,indel::Int=-2,max_error_rate::Float64=0.22)
       maximum_score = -Inf
@@ -69,11 +69,11 @@
    function determine_filemname(seq::String, bc_df::DataFrame; match::Int=0, mismatch::Int=-1, indel=-2, max_error_rate=0.22)
       class_barcode, multi_assignment = classify_sequence(seq, bc_df, match, mismatch, indel, max_error_rate)
       if multi_assignment
-         return "/trimmed-multi_assignment.fastq"
+         return "/multi_assignment.fastq"
       elseif class_barcode == 0
-         return "/trimmed-unknown.fastq"
+         return "/unknown.fastq"
       else
-         return "/trimmed-" * string(bc_df.ID[class_barcode]) * ".fastq"
+         return "/" * string(bc_df.ID[class_barcode]) * ".fastq"
       end
    end
       

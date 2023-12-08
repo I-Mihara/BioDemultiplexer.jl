@@ -36,18 +36,18 @@
                     push!(f, joinpath(root, file))
                  end
            end   
-           dr_unknown = filter(x -> occursin(r"thread.*/trimmed-unknown.fastq", x), f)
-           dr_multi_assignment = filter(x -> occursin(r"thread.*/trimmed-multi_assignment.fastq", x), f)
-           run(pipeline(`cat $dr_unknown` ,stdout= "$output_dir/trimmed-unknown.fastq"))
+           dr_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), f)
+           dr_multi_assignment = filter(x -> occursin(r"thread.*/multi_assignment.fastq", x), f)
+           run(pipeline(`cat $dr_unknown` ,stdout= "$output_dir/unknown.fastq"))
            if dr_multi_assignment != []
-              run(pipeline(`cat $dr_multi_assignment` ,stdout= "$output_dir/trimmed-multi_assignment.fastq"))
+              run(pipeline(`cat $dr_multi_assignment` ,stdout= "$output_dir/multi_assignment.fastq"))
            end
            for i in 1:nrow(bc_df)
-                 regex1 = r"thread.*/trimmed-"* string(bc_df.ID[i]) * ".fastq"
-                 dr_trimmed = filter(x -> occursin(regex1, x), f)
-                 if dr_trimmed != []
-                    dr_trimmed = joinpath.(output_dir, dr_trimmed)
-                    run(pipeline(`cat $dr_trimmed`, stdout= "$output_dir/trimmed-$(bc_df.ID[i]).fastq"))
+                 regex1 = r"thread.*/"* string(bc_df.ID[i]) * ".fastq"
+                 dr_matched = filter(x -> occursin(regex1, x), f)
+                 if dr_matched != []
+                    dr_matched = joinpath.(output_dir, dr_matched)
+                    run(pipeline(`cat $dr_matched`, stdout= "$output_dir/$(bc_df.ID[i]).fastq"))
                  end    
            end
            rm(joinpath(output_dir, "divided_fastq"), recursive=true)
