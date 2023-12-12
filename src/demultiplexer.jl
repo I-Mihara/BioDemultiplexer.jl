@@ -5,39 +5,26 @@
    The function returns the score of the alignment and the error rate of the alignment.
    """
    #search a string from b string
-   function semiglobal_alignment(
-      a::String, b::String;#a:query, b:seq
-      m::Int = Base.length(a),
-      n::Int = Base.length(b),
-      match::Int = 0,
-      mismatch::Int = -1,
-      indel::Int = -2,
-      )
-      if m == 0
-         return 0, 0
-      elseif n == 0
-         return indel*m,m
+   function semiglobal_alignment(query::String, seq::String; m::Int=Base.length(query), n::Int=Base.length(seq), match::Int=0, mismatch::Int=-1, indel::Int=-1)
+      if m == 0 || n == 0
+         return 0
       end
-      H = Vector{Int}(undef, m)
-      #initialization
-      for i in 1:m
-         H[i] = indel * i
-      end
+      DP = [indel * i for i in 1:m]
       # run dynamic programming column by column (except the last column)
       for j in 1:n
-         h = 0
+         previous_score = 0
          for i in 1:m
-            f = h + indel#↓
-            e = H[i] + (i == m ? 0 : indel)#→
-            g = (i == 1 ? 0 : H[i-1]) + (a[i] == b[j] ? match : mismatch)#↘︎
+             insertion_score = DP[i] + (i == m ? 0 : indel)#→
+             deletion_score = previous_score + indel#↓
+             substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
             if i != 1
-               H[i-1] = h
+               DP[i-1] = previous_score
             end
-            h = max(e, f, g)
+             previous_score = max(insertion_score, deletion_score, substitution_score)
          end
-         H[m] = h
+         DP[m] = previous_score
       end
-      return H[m]+m, -H[m]/m
+      return 1+DP[m]/m
    end
    
    """
