@@ -26,7 +26,7 @@
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file)
 		if workers == 1
-			process_fastq_file(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
+			classify_seqences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
 		else
 			divide_fastq(file_R1, file_R2, output_dir, workers)
 			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta, classify = classify), 1:workers)
@@ -74,6 +74,6 @@
 		fastq_R2 = output_dir * "/divided_fastq" * "/R2_" * lpad((thread_num - 1), 5, "0") * ".fastq"
 		mkdir(output_dir * "/thread" * string(thread_num))
 		output_dir = output_dir * "/thread" * string(thread_num)
-		process_fastq_file(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
+		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
 	end
 end

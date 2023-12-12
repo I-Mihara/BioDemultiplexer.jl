@@ -1,16 +1,15 @@
 @everywhere begin
 	"""
-	semiglobal_alignment is a function that aligns two strings.
-	The first string is a query string and the second string is a sequence string.
-	The function returns the score of the alignment and the error rate of the alignment.
+	This function aligns `query` and `seq` strings, using semiglobal alignment algorithm. 
+	# Returns
+	A similarity score as a float, where higher values indicate better alignment.(0<=similarity_score<=1)
 	"""
-	#search a string from b string
 	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = -1, indel::Int = -1)
 		if m == 0 || n == 0
 			return 0
 		end
-		DP = [indel * i for i in 1:m]
-		# run dynamic programming column by column (except the last column)
+		DP = [indel * i for i in 1:m] # Initialize the DP vector.
+		# Run DP column by column.
 		for j in 1:n
 			previous_score = 0
 			for i in 1:m
@@ -24,21 +23,25 @@
 			end
 			DP[m] = previous_score
 		end
+
 		return 1 + DP[m] / m
 	end
 
 	"""
-	classify_sequence is a function that classifies a query string into a sequence string.
-	The function returns the number of the sequence string and whether the query string is assigned to multiple sequence strings.
+	Calculate and compare the similarity of a given sequence seq with the sequences in the given DataFrame bc_df.
+	# Returns
+	A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
 	"""
-	function classify_sequence(seq::String, bc_df::DataFrame, max_error_rate::Float64)
-		max_score = -1
-		sub_max_score = -1
+	function fine_best_matching_seq(seq::String, bc_df::DataFrame, max_error_rate::Float64)
+		max_score = -1.0
+		sub_max_score = -1.0
 		max_score_bc = 0
 		lenseq = length(seq)
+
 		for (i, row) in enumerate(eachrow(bc_df))
 			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq)
-			if similarity_score > 1 - max_error_rate
+
+			if similarity_score > 1.0 - max_error_rate
 				if similarity_score > max_score
 					sub_max_score = max_score
 					max_score = similarity_score
@@ -48,14 +51,14 @@
 				end
 			end
 		end
+
 		delta = max_score - sub_max_score
 		return max_score_bc, delta
 	end
-	"""
-	determine_filemname is a function that determines the file name of the output file.
-	"""
-	function determine_filemname(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64)
-		max_score_bc, delta = classify_sequence(seq, bc_df, max_error_rate)
+
+	function determine_filename(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64)
+		max_score_bc, delta = find_best_matching_seq(seq, bc_df, max_error_rate)
+
 		if max_score_bc == 0
 			return "/unknown.fastq"
 		elseif delta < min_delta
@@ -65,10 +68,6 @@
 		end
 	end
 
-
-	"""
-	write_fastq_entry is a function that writes a fastq entry to a file.
-	"""
 	function write_fastq_entry(filepath, header, seq, plus, quality)
 		open(filepath, "a") do outputfile
 			write(outputfile, header * "\n" * seq * "\n" * plus * "\n" * quality * "\n")
@@ -76,9 +75,9 @@
 	end
 
 	"""
-	process_fastq_file is a function that processes a fastq file.
+	Compare each sequence in the fastq_R1 file with the sequences in bc_df, and classify the sequences of the specified file based on that comparison.
 	"""
-	function process_fastq_file(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64; classify = "R2")
+	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64; classify = "R2")
 		if classify == "both"
 			mkdir(output_dir * "/R1")
 			mkdir(output_dir * "/R2")
@@ -105,7 +104,7 @@
 						elseif mode == "quality_score"
 							quality_score = line
 							quality_score2 = line2
-							filename = determine_filemname(seq, bc_df, match = match, max_error_rate, min_delta)
+							filename = determine_filename(seq, bc_df, match = match, max_error_rate, min_delta)
 							write_fastq_entry(output_dir * "/R1" * filename, header, seq, plus, quality_score)
 							write_fastq_entry(output_dir * "/R2" * filename, header2, seq2, plus2, quality_score2)
 							mode = "header"
