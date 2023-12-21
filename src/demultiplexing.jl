@@ -36,24 +36,35 @@
 					push!(paths, joinpath(root, file))
 				end
 			end
-			paths_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), paths)
-			paths_ambiguous_classification = filter(x -> occursin(r"thread.*/ambiguous_classification.fastq", x), paths)
-			# merge files
-			run(pipeline(`cat $paths_unknown`, stdout = "$output_dir/unknown.fastq"))
-			if paths_ambiguous_classification != []
-				run(pipeline(`cat $paths_ambiguous_classification`, stdout = "$output_dir/ambiguous_classification.fastq"))
-			end
-			for i in 1:nrow(bc_df)
-				regex1 = r"thread.*/" * string(bc_df.ID[i]) * ".fastq"
-				paths_matched = filter(x -> occursin(regex1, x), paths)
-				if paths_matched != []
-					paths_matched = joinpath.(output_dir, paths_matched)
-					run(pipeline(`cat $paths_matched`, stdout = "$output_dir/$(bc_df.ID[i]).fastq"))
-				end
+			if classify == "both"
+				paths_R1 = filter(x -> occursin(r"R1", x), paths)
+				paths_R2 = filter(x -> occursin(r"R2", x), paths)
+				merge_fastq_files(paths_R1, output_dir * "/R1")
+				merge_fastq_files(paths_R2, output_dir * "/R2")
+			else
+				merge_fastq_files(paths, output_dir)
 			end
 			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
 			for i in 1:workers
 				rm(joinpath(output_dir, "thread" * string(i)), recursive = true)
+			end
+		end
+	end
+
+	function merge_fastq_files(paths, output_path)
+		paths_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), paths)
+		paths_ambiguous_classification = filter(x -> occursin(r"thread.*/ambiguous_classification.fastq", x), paths)
+		# merge files
+		run(pipeline(`cat $paths_unknown`, stdout = "$output_dir/unknown.fastq"))
+		if paths_ambiguous_classification != []
+			run(pipeline(`cat $paths_ambiguous_classification`, stdout = "$output_dir/ambiguous_classification.fastq"))
+		end
+		for i in 1:nrow(bc_df)
+			regex1 = r"thread.*/" * string(bc_df.ID[i]) * ".fastq"
+			paths_matched = filter(x -> occursin(regex1, x), paths)
+			if paths_matched != []
+				paths_matched = joinpath.(output_dir, paths_matched)
+				run(pipeline(`cat $paths_matched`, stdout = "$output_dir/$(bc_df.ID[i]).fastq"))
 			end
 		end
 	end

@@ -90,21 +90,21 @@
 					for line1 in eachline(primary_file)
 						line2 = readline(secondary_file)
 						if line1[1] == '@' && mode == "header"
-							header = line
+							header = line1
 							header2 = line2
 							mode = "seq"
 						elseif mode == "seq"
-							seq = line
+							seq = line1
 							seq2 = line2
 							mode = "plus"
 						elseif mode == "plus"
-							plus = line
+							plus = line1
 							plus2 = line2
 							mode = "quality_score"
 						elseif mode == "quality_score"
-							quality_score = line
+							quality_score = line1
 							quality_score2 = line2
-							filename = determine_filename(seq, bc_df, match = match, max_error_rate, min_delta)
+							filename = determine_filename(seq, bc_df, max_error_rate, min_delta)
 							write_fastq_entry(output_dir * "/R1" * filename, header, seq, plus, quality_score)
 							write_fastq_entry(output_dir * "/R2" * filename, header2, seq2, plus2, quality_score2)
 							mode = "header"
