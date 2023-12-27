@@ -1,5 +1,5 @@
 @everywhere begin
-	function preprocess_bc_file(bc_file_path::String; rev = true)
+	function preprocess_bc_file(bc_file_path::String, rev::Bool = true)
 		bc_df = CSV.read(bc_file_path, DataFrame, delim = "\t")
 		for i in 1:nrow(bc_df)
 			prefix_region = 1:findfirst('B', bc_df.Full_annotation[i])-1
@@ -18,13 +18,55 @@
 		return bc_df
 	end
 
-	function execute_demultiplexing(file_R1, file_R2, bc_file, output_dir; max_error_rate = 0.2, min_delta = 0.1, classify = "R2", bc_rev = true)
+
+	function divide_fastq(file_R1::String, file_R2::String, output_dir::String, workers::Int)
+		divided_dir = joinpath(output_dir, "divided_fastq")
+		mkdir(divided_dir)
+		total_lines = countlines(file_R1)
+		total_reads = total_lines ÷ 4
+		reads_per_worker = cld(total_reads, workers)
+		lines_per_worker = reads_per_worker * 4
+		run(`split -l $lines_per_worker -a 5 -d $file_R1 $divided_dir/R1_ --additional-suffix=.fastq`)
+		run(`split -l $lines_per_worker -a 5 -d $file_R2 $divided_dir/R2_ --additional-suffix=.fastq`)
+	end
+
+	function mlt_demltplex(thread_num::Int, bc_df::String, output_dir::String, max_error_rate::String, min_delta::String, classify::Bool)
+		fastq_R1 = output_dir * "/divided_fastq" * "/R1_" * lpad((thread_num - 1), 5, "0") * ".fastq"
+		fastq_R2 = output_dir * "/divided_fastq" * "/R2_" * lpad((thread_num - 1), 5, "0") * ".fastq"
+		mkdir(output_dir * "/thread" * string(thread_num))
+		output_dir = output_dir * "/thread" * string(thread_num)
+		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
+	end
+
+	function merge_fastq_files(paths::String, bc_df::String, output_dir::String)
+		paths_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), paths)
+		if paths_unknown != []
+			run(pipeline(`cat $paths_unknown`, stdout = "$output_dir/unknown.fastq"))
+		end
+
+		paths_ambiguous_classification = filter(x -> occursin(r"thread.*/ambiguous_classification.fastq", x), paths)
+		if paths_ambiguous_classification != []
+			run(pipeline(`cat $paths_ambiguous_classification`, stdout = "$output_dir/ambiguous_classification.fastq"))
+		end
+
+		for i in 1:nrow(bc_df)
+			regex = r"thread.*/" * string(bc_df.ID[i]) * ".fastq"
+			paths_matched = filter(x -> occursin(regex, x), paths)
+			if paths_matched != []
+				paths_matched = joinpath.(output_dir, paths_matched)
+				run(pipeline(`cat $paths_matched`, stdout = "$output_dir/$(bc_df.ID[i]).fastq"))
+			end
+		end
+	end
+
+	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float = 0.2, min_delta::Float = 0.1, classify::Stiring = "R2", bc_rev::Bool = true)
 		if isdir(output_dir)
 			error("Output directory already exists")
 		end
 		mkdir(output_dir)
+
 		workers = nworkers()
-		bc_df = preprocess_bc_file(bc_file)
+		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
 			classify_seqences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
 		else
@@ -39,52 +81,16 @@
 			if classify == "both"
 				paths_R1 = filter(x -> occursin(r"R1", x), paths)
 				paths_R2 = filter(x -> occursin(r"R2", x), paths)
-				merge_fastq_files(paths_R1, output_dir * "/R1")
-				merge_fastq_files(paths_R2, output_dir * "/R2")
+				merge_fastq_files(paths_R1, bc_df, output_dir * "/R1")
+				merge_fastq_files(paths_R2, bc_df, output_dir * "/R2")
 			else
-				merge_fastq_files(paths, output_dir)
+				merge_fastq_files(paths, bc_df, output_dir)
 			end
+
 			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
 			for i in 1:workers
 				rm(joinpath(output_dir, "thread" * string(i)), recursive = true)
 			end
 		end
-	end
-
-	function merge_fastq_files(paths, output_path)
-		paths_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), paths)
-		paths_ambiguous_classification = filter(x -> occursin(r"thread.*/ambiguous_classification.fastq", x), paths)
-		# merge files
-		run(pipeline(`cat $paths_unknown`, stdout = "$output_dir/unknown.fastq"))
-		if paths_ambiguous_classification != []
-			run(pipeline(`cat $paths_ambiguous_classification`, stdout = "$output_dir/ambiguous_classification.fastq"))
-		end
-		for i in 1:nrow(bc_df)
-			regex1 = r"thread.*/" * string(bc_df.ID[i]) * ".fastq"
-			paths_matched = filter(x -> occursin(regex1, x), paths)
-			if paths_matched != []
-				paths_matched = joinpath.(output_dir, paths_matched)
-				run(pipeline(`cat $paths_matched`, stdout = "$output_dir/$(bc_df.ID[i]).fastq"))
-			end
-		end
-	end
-
-	function divide_fastq(file_R1, file_R2, output_dir, workers)
-		div_dir = joinpath(output_dir, "divided_fastq")
-		mkdir(div_dir)
-		num_lines = countlines(file_R1)
-		num_reads = num_lines ÷ 4
-		reads_per_thread = cld(num_reads, workers)
-		lines_per_thread = reads_per_thread * 4
-		run(`split -l $lines_per_thread -a 5 -d $file_R1 $div_dir/R1_ --additional-suffix=.fastq`)
-		run(`split -l $lines_per_thread -a 5 -d $file_R2 $div_dir/R2_ --additional-suffix=.fastq`)
-	end
-
-	function mlt_demltplex(thread_num, bc_df, output_dir, max_error_rate, min_delta, classify)
-		fastq_R1 = output_dir * "/divided_fastq" * "/R1_" * lpad((thread_num - 1), 5, "0") * ".fastq"
-		fastq_R2 = output_dir * "/divided_fastq" * "/R2_" * lpad((thread_num - 1), 5, "0") * ".fastq"
-		mkdir(output_dir * "/thread" * string(thread_num))
-		output_dir = output_dir * "/thread" * string(thread_num)
-		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
 	end
 end

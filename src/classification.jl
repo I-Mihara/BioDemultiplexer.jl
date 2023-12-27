@@ -32,7 +32,7 @@
 	# Returns
 	A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
 	"""
-	function fine_best_matching_seq(seq::String, bc_df::DataFrame, max_error_rate::Float64)
+	function find_best_matching_seq(seq::String, bc_df::DataFrame, max_error_rate::Float64)
 		max_score = -1.0
 		sub_max_score = -1.0
 		max_score_bc = 0
