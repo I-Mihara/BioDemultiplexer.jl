@@ -77,8 +77,8 @@
 	"""
 	Compare each sequence in the fastq_R1 file with the sequences in bc_df, and classify the sequences of the specified file based on that comparison.
 	"""
-	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64; classify = "R2")
-		if classify == "both"
+	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both=false)
+		if classify_both
 			mkdir(output_dir * "/R1")
 			mkdir(output_dir * "/R2")
 			open(fastq_R1, "r") do primary_file
@@ -112,7 +112,7 @@
 					end
 				end
 			end
-		elseif classify == "R2"
+		else
 			open(fastq_R1, "r") do primary_file
 				open(fastq_R2, "r") do secondary_file
 					header2, seq2, plus2, quality_score2 = "", "", "", ""
@@ -124,7 +124,7 @@
 							header2 = line2
 							mode = "seq"
 						elseif mode == "seq"
-							filename = determine_filemname(line1, bc_df, max_error_rate, min_delta)
+							filename = determine_filename(line1, bc_df, max_error_rate, min_delta)
 							seq2 = line2
 							mode = "plus"
 						elseif mode == "plus"
@@ -138,27 +138,29 @@
 					end
 				end
 			end
-		elseif classify == "R1"
-			open(fastq_R1, "r") do file
-				header, seq, plus, quality_score = "", "", "", ""
-				mode = "header"
-				filename = ""
-				for line in eachline(file)
-					if line[1] == '@' && mode == "header"
-						header = line
-						mode = "seq"
-					elseif mode == "seq"
-						seq = line
-						mode = "plus"
-					elseif mode == "plus"
-						plus = line
-						mode = "quality_score"
-					elseif mode == "quality_score"
-						quality_score = line
-						filename = determine_filemname(seq, bc_df, max_error_rate, min_delta)
-						write_fastq_entry(output_dir * filename, header, seq, plus, quality_score)
-						mode = "header"
-					end
+		end
+	end
+
+	function classify_seqences(fastq_R1::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
+		open(fastq_R1, "r") do file
+			header, seq, plus, quality_score = "", "", "", ""
+			mode = "header"
+			filename = ""
+			for line in eachline(file)
+				if line[1] == '@' && mode == "header"
+					header = line
+					mode = "seq"
+				elseif mode == "seq"
+					seq = line
+					mode = "plus"
+				elseif mode == "plus"
+					plus = line
+					mode = "quality_score"
+				elseif mode == "quality_score"
+					quality_score = line
+					filename = determine_filename(seq, bc_df, max_error_rate, min_delta)
+					write_fastq_entry(output_dir * filename, header, seq, plus, quality_score)
+					mode = "header"
 				end
 			end
 		end

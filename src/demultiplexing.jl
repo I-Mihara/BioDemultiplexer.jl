@@ -30,15 +30,33 @@
 		run(`split -l $lines_per_worker -a 5 -d $file_R2 $divided_dir/R2_ --additional-suffix=.fastq`)
 	end
 
-	function mlt_demltplex(thread_num::Int, bc_df::String, output_dir::String, max_error_rate::String, min_delta::String, classify::Bool)
+	function divide_fastq(file_R1::String, output_dir::String, workers::Int)
+		divided_dir = joinpath(output_dir, "divided_fastq")
+		mkdir(divided_dir)
+		total_lines = countlines(file_R1)
+		total_reads = total_lines ÷ 4
+		reads_per_worker = cld(total_reads, workers)
+		lines_per_worker = reads_per_worker * 4
+		run(`split -l $lines_per_worker -a 5 -d $file_R1 $divided_dir/R1_ --additional-suffix=.fastq`)
+	end
+
+	function mlt_demltplex(thread_num::Int, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both::Bool)
 		fastq_R1 = output_dir * "/divided_fastq" * "/R1_" * lpad((thread_num - 1), 5, "0") * ".fastq"
 		fastq_R2 = output_dir * "/divided_fastq" * "/R2_" * lpad((thread_num - 1), 5, "0") * ".fastq"
 		mkdir(output_dir * "/thread" * string(thread_num))
 		output_dir = output_dir * "/thread" * string(thread_num)
-		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
+		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
 	end
 
-	function merge_fastq_files(paths::String, bc_df::String, output_dir::String)
+	function mlt_demltplex(thread_num::Int, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
+		fastq_R1 = output_dir * "/divided_fastq" * "/R1_" * lpad((thread_num - 1), 5, "0") * ".fastq"
+		mkdir(output_dir * "/thread" * string(thread_num))
+		output_dir = output_dir * "/thread" * string(thread_num)
+		classify_seqences(fastq_R1, bc_df, output_dir, max_error_rate, min_delta)
+	end
+
+
+	function merge_fastq_files(paths::Vector, bc_df::DataFrame, output_dir::String)
 		paths_unknown = filter(x -> occursin(r"thread.*/unknown.fastq", x), paths)
 		if paths_unknown != []
 			run(pipeline(`cat $paths_unknown`, stdout = "$output_dir/unknown.fastq"))
@@ -59,7 +77,7 @@
 		end
 	end
 
-	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float = 0.2, min_delta::Float = 0.1, classify::Stiring = "R2", bc_rev::Bool = true)
+	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.2, min_delta::Float64 = 0.1, classify_both::Bool = false, bc_rev::Bool = true)
 		if isdir(output_dir)
 			error("Output directory already exists")
 		end
@@ -68,17 +86,17 @@
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
-			classify_seqences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify = classify)
+			classify_seqences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
 		else
 			divide_fastq(file_R1, file_R2, output_dir, workers)
-			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta, classify = classify), 1:workers)
+			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta, classify_both), 1:workers)
 			paths = []
 			for (root, dirs, files) in walkdir(output_dir)
 				for file in files
 					push!(paths, joinpath(root, file))
 				end
 			end
-			if classify == "both"
+			if classify_both
 				paths_R1 = filter(x -> occursin(r"R1", x), paths)
 				paths_R2 = filter(x -> occursin(r"R2", x), paths)
 				merge_fastq_files(paths_R1, bc_df, output_dir * "/R1")
@@ -86,6 +104,34 @@
 			else
 				merge_fastq_files(paths, bc_df, output_dir)
 			end
+
+			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
+			for i in 1:workers
+				rm(joinpath(output_dir, "thread" * string(i)), recursive = true)
+			end
+		end
+	end
+
+	function execute_demultiplexing(file_R1::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.2, min_delta::Float64 = 0.1, bc_rev::Bool = true)
+		if isdir(output_dir)
+			error("Output directory already exists")
+		end
+		mkdir(output_dir)
+
+		workers = nworkers()
+		bc_df = preprocess_bc_file(bc_file, bc_rev)
+		if workers == 1
+			classify_seqences(file_R1, bc_df, output_dir, max_error_rate, min_delta)
+		else
+			divide_fastq(file_R1, output_dir, workers)
+			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta), 1:workers)
+			paths = []
+			for (root, dirs, files) in walkdir(output_dir)
+				for file in files
+					push!(paths, joinpath(root, file))
+				end
+			end
+			merge_fastq_files(paths, bc_df, output_dir)
 
 			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
 			for i in 1:workers
