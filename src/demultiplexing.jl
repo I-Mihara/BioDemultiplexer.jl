@@ -1,4 +1,7 @@
 @everywhere begin
+	"""
+	Preprocesses the barcode file by modifying sequences based on specific criteria.
+	"""
 	function preprocess_bc_file(bc_file_path::String, rev::Bool = true)
 		bc_df = CSV.read(bc_file_path, DataFrame, delim = "\t")
 		for i in 1:nrow(bc_df)
@@ -18,7 +21,10 @@
 		return bc_df
 	end
 
-
+	"""
+	Divides a pair of FASTQ files into smaller parts for parallel processing.
+    It calculates the number of reads per worker and uses the split command to divide the files.
+	"""
 	function divide_fastq(file_R1::String, file_R2::String, output_dir::String, workers::Int)
 		divided_dir = joinpath(output_dir, "divided_fastq")
 		mkdir(divided_dir)
@@ -30,6 +36,9 @@
 		run(`split -l $lines_per_worker -a 5 -d $file_R2 $divided_dir/R2_ --additional-suffix=.fastq`)
 	end
 
+	"""
+	Divides a single FASTQ file for parallel processing.
+	"""
 	function divide_fastq(file_R1::String, output_dir::String, workers::Int)
 		divided_dir = joinpath(output_dir, "divided_fastq")
 		mkdir(divided_dir)
@@ -77,6 +86,10 @@
 		end
 	end
 
+	"""
+	Orchestrates the entire demultiplexing process for FASTQ files.
+    Handles the preprocessing, dividing, demultiplexing, and merging of files.
+	"""
 	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.2, min_delta::Float64 = 0.1, classify_both::Bool = false, bc_rev::Bool = true)
 		if isdir(output_dir)
 			error("Output directory already exists")

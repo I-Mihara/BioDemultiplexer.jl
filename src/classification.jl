@@ -30,7 +30,6 @@
 	"""
 	Fast version of semiglobal_alignment function.
 	"""
-
 	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = 1, indel::Int = 1, max_error::Float64)
 		if m == 0 || n == 0
 		   return 0
