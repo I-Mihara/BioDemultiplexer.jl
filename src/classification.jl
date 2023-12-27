@@ -28,6 +28,47 @@
 	end
 
 	"""
+	Fast version of semiglobal_alignment function.
+	"""
+
+	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = 1, indel::Int = 1, max_error::Float64)
+		if m == 0 || n == 0
+		   return 0
+		end
+		allowed_error=floor(max_error*m) |> Int
+		DP = [indel * i for i in 1:m] # Initialize the DP vector.
+		# Run DP column by column.
+		lact=allowed_error
+		for j in 1:n
+		   if m-allowed_error-n+j > 1
+			  h=m-allowed_error-n+j
+			  previous_score=allowed_error
+		   else
+			  h=1
+			  previous_score=0
+		   end
+		   if h>lact+1
+			  return 0
+		   end
+		   for i in h:lact+1
+			  insertion_score = DP[i] + (i == m ? 0 : indel)#→
+			  deletion_score = previous_score + indel#↓
+			  substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
+			  if i != 1
+				 DP[i-1] = previous_score
+			  end
+			  previous_score = min(insertion_score, deletion_score, substitution_score)
+		   end
+		   DP[lact+1] = previous_score
+		   while lact>-1 && DP[lact+1] > allowed_error
+			  lact-=1
+		   end
+		   lact=min(lact+1,m-1)
+		end
+		return 1 - DP[m] / m
+	 end
+
+	"""
 	Calculate and compare the similarity of a given sequence seq with the sequences in the given DataFrame bc_df.
 	# Returns
 	A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
@@ -39,7 +80,7 @@
 		lenseq = length(seq)
 
 		for (i, row) in enumerate(eachrow(bc_df))
-			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq)
+			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq max_error = max_error_rate)
 
 			if similarity_score > 1.0 - max_error_rate
 				if similarity_score > max_score
