@@ -15,9 +15,8 @@ export
 	classify_sequence,
 	semiglobal_alignment
 
-
 using Distributed
-@everywhere using DataFrames, CSV
+@everywhere using DataFrames, CSV, Distributed
 
 
 include("classification.jl")

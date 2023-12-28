@@ -85,7 +85,7 @@
 			end
 		end
 	end
-
+	
 	"""
 	Orchestrates the entire demultiplexing process for FASTQ files.
 	Handles the preprocessing, dividing, demultiplexing, and merging of files.
@@ -95,7 +95,7 @@
 			error("Output directory already exists")
 		end
 		mkdir(output_dir)
-
+	
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
@@ -117,20 +117,20 @@
 			else
 				merge_fastq_files(paths, bc_df, output_dir)
 			end
-
+	
 			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
 			for i in 1:workers
 				rm(joinpath(output_dir, "thread" * string(i)), recursive = true)
 			end
 		end
 	end
-
+	
 	function execute_demultiplexing(file_R1::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.2, min_delta::Float64 = 0.1, bc_rev::Bool = true)
 		if isdir(output_dir)
 			error("Output directory already exists")
 		end
 		mkdir(output_dir)
-
+	
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
@@ -145,7 +145,7 @@
 				end
 			end
 			merge_fastq_files(paths, bc_df, output_dir)
-
+	
 			rm(joinpath(output_dir, "divided_fastq"), recursive = true)
 			for i in 1:workers
 				rm(joinpath(output_dir, "thread" * string(i)), recursive = true)

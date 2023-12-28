@@ -32,40 +32,41 @@
 	"""
 	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = 1, indel::Int = 1, max_error::Float64)
 		if m == 0 || n == 0
-		   return 0
+			return 0
 		end
-		allowed_error=floor(max_error*m) |> Int
+		allowed_error = floor(max_error * m) |> Int
 		DP = [indel * i for i in 1:m] # Initialize the DP vector.
 		# Run DP column by column.
-		lact=allowed_error
+		lact = allowed_error
 		for j in 1:n
-		   if m-allowed_error-n+j > 1
-			  h=m-allowed_error-n+j
-			  previous_score=allowed_error
-		   else
-			  h=1
-			  previous_score=0
-		   end
-		   if h>lact+1
-			  return 0
-		   end
-		   for i in h:lact+1
-			  insertion_score = DP[i] + (i == m ? 0 : indel)#→
-			  deletion_score = previous_score + indel#↓
-			  substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
-			  if i != 1
-				 DP[i-1] = previous_score
-			  end
-			  previous_score = min(insertion_score, deletion_score, substitution_score)
-		   end
-		   DP[lact+1] = previous_score
-		   while lact>-1 && DP[lact+1] > allowed_error
-			  lact-=1
-		   end
-		   lact=min(lact+1,m-1)
+			lact = min(lact, m - 1)
+			if m - allowed_error - n + j > 1
+				h = m - allowed_error - n + j
+				previous_score = allowed_error
+			else
+				h = 1
+				previous_score = 0
+			end
+			if h > lact + 1
+				return 0
+			end
+			for i in h:lact+1
+				insertion_score = DP[i] + (i == m ? 0 : indel)#→
+				deletion_score = previous_score + indel#↓
+				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
+				if i != 1
+					DP[i-1] = previous_score
+				end
+				previous_score = min(insertion_score, deletion_score, substitution_score)
+			end
+			DP[lact+1] = previous_score
+			while lact > -1 && DP[lact+1] > allowed_error
+				lact -= 1
+			end
+			lact += 1
 		end
 		return 1 - DP[m] / m
-	 end
+	end
 
 	"""
 	Calculate and compare the similarity of a given sequence seq with the sequences in the given DataFrame bc_df.
@@ -79,9 +80,9 @@
 		lenseq = length(seq)
 
 		for (i, row) in enumerate(eachrow(bc_df))
-			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq max_error = max_error_rate)
+			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq, max_error = max_error_rate)
 
-			if similarity_score > 1.0 - max_error_rate
+			if similarity_score >= 1.0 - max_error_rate
 				if similarity_score > max_score
 					sub_max_score = max_score
 					max_score = similarity_score
@@ -117,7 +118,7 @@
 	"""
 	Compare each sequence in the fastq_R1 file with the sequences in bc_df, and classify the sequences of the specified file based on that comparison.
 	"""
-	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both=false)
+	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both = false)
 		if classify_both
 			mkdir(output_dir * "/R1")
 			mkdir(output_dir * "/R2")
