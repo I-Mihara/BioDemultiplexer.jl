@@ -41,16 +41,16 @@
 		for j in 1:n
 			lact = min(lact, m - 1)
 			if m - allowed_error - n + j > 1
-				h = m - allowed_error - n + j
+				fact = m - allowed_error - n + j
 				previous_score = allowed_error
 			else
-				h = 1
+				fact = 1
 				previous_score = 0
 			end
-			if h > lact + 1
+			if fact > lact + 1
 				return 0
 			end
-			for i in h:lact+1
+			for i in fact:lact+1
 				insertion_score = DP[i] + (i == m ? 0 : indel)#→
 				deletion_score = previous_score + indel#↓
 				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
