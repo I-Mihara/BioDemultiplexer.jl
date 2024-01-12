@@ -90,7 +90,7 @@
 	Orchestrates the entire demultiplexing process for FASTQ files.
 	Handles the preprocessing, dividing, demultiplexing, and merging of files.
 	"""
-	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.2, min_delta::Float64 = 0.1, classify_both::Bool = false, bc_rev::Bool = true)
+	function execute_demultiplexing(file_R1::String, file_R2::String, bc_file::String, output_dir::String; max_error_rate::Float64 = 0.22, min_delta::Float64 = 0.1, classify_both::Bool = false, bc_rev::Bool = true)
 		if isdir(output_dir)
 			error("Output directory already exists")
 		end

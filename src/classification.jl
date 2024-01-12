@@ -1,10 +1,10 @@
 @everywhere begin
 	"""
-	This function aligns `query` and `seq` strings, using semiglobal alignment algorithm. 
+	This function aligns `query` and `ref` strings, using semiglobal alignment algorithm. 
 	# Returns
 	A similarity score as a float, where higher values indicate better alignment.(0<=similarity_score<=1)
 	"""
-	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = -1, indel::Int = -1)
+	function semiglobal_alignment(query::String, ref::String; m::Int = Base.length(query), n::Int = Base.length(ref), match::Int = 0, mismatch::Int = -1, indel::Int = -1)
 		if m == 0 || n == 0
 			return 0
 		end
@@ -15,7 +15,7 @@
 			for i in 1:m
 				insertion_score = DP[i] + (i == m ? 0 : indel)#→
 				deletion_score = previous_score + indel#↓
-				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
+				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
 				if i != 1
 					DP[i-1] = previous_score
 				end
@@ -30,7 +30,7 @@
 	"""
 	Fast version of semiglobal_alignment function.
 	"""
-	function semiglobal_alignment(query::String, seq::String; m::Int = Base.length(query), n::Int = Base.length(seq), match::Int = 0, mismatch::Int = 1, indel::Int = 1, max_error::Float64)
+	function semiglobal_alignment(query::String, ref::String, max_error::Float64; m::Int = Base.length(query), n::Int = Base.length(ref), match::Int = 0, mismatch::Int = 1, indel::Int = 1)
 		if m == 0 || n == 0
 			return 0
 		end
@@ -53,7 +53,7 @@
 			for i in fact:lact+1
 				insertion_score = DP[i] + (i == m ? 0 : indel)#→
 				deletion_score = previous_score + indel#↓
-				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == seq[j] ? match : mismatch)#↘︎
+				substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
 				if i != 1
 					DP[i-1] = previous_score
 				end
@@ -73,14 +73,14 @@
 	# Returns
 	A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
 	"""
-	function find_best_matching_seq(seq::String, bc_df::DataFrame, max_error_rate::Float64)
+	function find_best_matching_bc(seq::String, bc_df::DataFrame, max_error_rate::Float64)
 		max_score = -1.0
 		sub_max_score = -1.0
 		max_score_bc = 0
 		lenseq = length(seq)
 
 		for (i, row) in enumerate(eachrow(bc_df))
-			similarity_score = semiglobal_alignment(row.Full_seq, seq, n = lenseq, max_error = max_error_rate)
+			similarity_score = semiglobal_alignment(row.Full_seq, seq, max_error_rate, n = lenseq)
 
 			if similarity_score >= 1.0 - max_error_rate
 				if similarity_score > max_score
@@ -98,7 +98,7 @@
 	end
 
 	function determine_filename(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64)
-		max_score_bc, delta = find_best_matching_seq(seq, bc_df, max_error_rate)
+		max_score_bc, delta = find_best_matching_bc(seq, bc_df, max_error_rate)
 
 		if max_score_bc == 0
 			return "/unknown.fastq"
