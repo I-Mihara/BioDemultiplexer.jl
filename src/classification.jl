@@ -118,7 +118,7 @@
 	"""
 	Compare each sequence in the fastq_R1 file with the sequences in bc_df, and classify the sequences of the specified file based on that comparison.
 	"""
-	function classify_seqences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both = false)
+	function classify_sequences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both = false)
 		if classify_both
 			mkdir(output_dir * "/R1")
 			mkdir(output_dir * "/R2")
@@ -182,7 +182,7 @@
 		end
 	end
 
-	function classify_seqences(fastq_R1::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
+	function classify_sequences(fastq_R1::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
 		open(fastq_R1, "r") do file
 			header, seq, plus, quality_score = "", "", "", ""
 			mode = "header"

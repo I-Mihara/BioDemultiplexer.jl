@@ -54,14 +54,14 @@
 		fastq_R2 = output_dir * "/divided_fastq" * "/R2_" * lpad((thread_num - 1), 5, "0") * ".fastq"
 		mkdir(output_dir * "/thread" * string(thread_num))
 		output_dir = output_dir * "/thread" * string(thread_num)
-		classify_seqences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
+		classify_sequences(fastq_R1, fastq_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
 	end
 
 	function mlt_demltplex(thread_num::Int, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
 		fastq_R1 = output_dir * "/divided_fastq" * "/R1_" * lpad((thread_num - 1), 5, "0") * ".fastq"
 		mkdir(output_dir * "/thread" * string(thread_num))
 		output_dir = output_dir * "/thread" * string(thread_num)
-		classify_seqences(fastq_R1, bc_df, output_dir, max_error_rate, min_delta)
+		classify_sequences(fastq_R1, bc_df, output_dir, max_error_rate, min_delta)
 	end
 
 
@@ -99,7 +99,7 @@
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
-			classify_seqences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
+			classify_sequences(file_R1, file_R2, bc_df, output_dir, max_error_rate, min_delta, classify_both)
 		else
 			divide_fastq(file_R1, file_R2, output_dir, workers)
 			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta, classify_both), 1:workers)
@@ -134,7 +134,7 @@
 		workers = nworkers()
 		bc_df = preprocess_bc_file(bc_file, bc_rev)
 		if workers == 1
-			classify_seqences(file_R1, bc_df, output_dir, max_error_rate, min_delta)
+			classify_sequences(file_R1, bc_df, output_dir, max_error_rate, min_delta)
 		else
 			divide_fastq(file_R1, output_dir, workers)
 			pmap(x -> mlt_demltplex(x, bc_df, output_dir, max_error_rate, min_delta), 1:workers)
