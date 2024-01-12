@@ -85,11 +85,11 @@ function test_demultiplexing()
     end
 end
 @testset "BioDemultiplexer.jl" begin
-    @testset "demultiplexing tests" begin
-        test_demultiplexing()
-    end
-
     @testset "classification tests" begin
         test_classification()
+    end
+
+    @testset "demultiplexing tests" begin
+        test_demultiplexing()
     end
 end
