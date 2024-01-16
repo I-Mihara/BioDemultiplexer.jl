@@ -3,24 +3,21 @@ __precompile__()
 module BioDemultiplexer
 
 export
-
-	execute_demultiplexing,
-	single_demltplex,
-	mlt_demltplex,
-	divide_fastq,
-	preprocess_bc_file,
-	process_fastq_file,
-	write_fastq_entry,
+	semiglobal_alignment,
+	find_best_matching_bc,
 	determine_filemname,
-	classify_sequence,
-	semiglobal_alignment
+	write_fastq_entry,
+	classify_sequences,
+
+	preprocess_bc_file,
+	divide_fastq,
+	mlt_demltplex,
+	merge_fastq_files,
+	execute_demultiplexing
 
 using Distributed
 @everywhere using DataFrames, CSV, Distributed
-
-
 include("classification.jl")
 include("demultiplexing.jl")
-
 
 end#module
