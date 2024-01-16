@@ -15,8 +15,8 @@ export
 	merge_fastq_files,
 	execute_demultiplexing
 
-using Distributed
-@everywhere using DataFrames, CSV, Distributed
+
+using DataFrames, CSV, Distributed
 include("classification.jl")
 include("demultiplexing.jl")
 

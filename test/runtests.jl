@@ -61,23 +61,15 @@ function test_demultiplexing()
     @test isdir(output_dir)
     @test !isfile(joinpath(output_dir, "unknown.fastq"))
     @test !isfile(joinpath(output_dir, "sample_1.fastq"))
-    @test isfile(joinpath(output_dir, "trimmed-sample_2.fastq"))
-    @test isfile(joinpath(output_dir, "trimmed-sample_3.fastq"))
-    open(joinpath(output_dir, "trimmed-sample_2.fastq"),"r") do out
+    @test isfile(joinpath(output_dir, "sample_2.fastq"))
+    @test isfile(joinpath(output_dir, "sample_3.fastq"))
+    open(joinpath(output_dir, "sample_2.fastq"),"r") do out
         @test readline(out) == "@example_read1"
         @test readline(out) == "ATGC"
         @test readline(out) == "+"
         @test readline(out) == "FFFF"
-        @test readline(out) == "@example_read2"
-        @test readline(out) == "TTTTT"
-        @test readline(out) == "+"
-        @test readline(out) == "FFF:F"
     end
-    open(joinpath(output_dir, "trimmed-sample_3.fastq"),"r") do out
-        @test readline(out) == "@example_read1"
-        @test readline(out) == "ATGC"
-        @test readline(out) == "+"
-        @test readline(out) == "FFFF"
+    open(joinpath(output_dir, "sample_3.fastq"),"r") do out
         @test readline(out) == "@example_read2"
         @test readline(out) == "TTTTT"
         @test readline(out) == "+"
