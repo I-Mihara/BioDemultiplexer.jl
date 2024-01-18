@@ -11,12 +11,14 @@ The primary function of this package is `execute_demultiplexing()`. It classifie
 execute_demultiplexing(file_R1, file_R2, bc_file, output_dir)
 ```
 
-### Arguments
+**Arguments**
+
 * `file_R1::String`: Path to the input R1 FASTQ file.
 * `file_R2::String`: Path to the input R2 FASTQ file.
 * `bc_file::String`: Path to the reference barcode file in TSV format.
 * `output_dir::String`: Path to the directory where demultiplexed files will be saved.
-### Optional Arguments
+**Optional Arguments**
+
 * `max_error_rate::Float64 = 0.22`: Maximum permissible error rate for sequence assignment.
 * `min_delta::Float64 = 0.1`: Minimum difference between the highest and second-highest barcode similarity scores.
 * `classify_both::Bool = false`: Set to true to classify both R1 and R2 sequences.
