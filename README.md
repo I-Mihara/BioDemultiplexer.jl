@@ -17,6 +17,7 @@ execute_demultiplexing(file_R1, file_R2, bc_file, output_dir)
 * `file_R2::String`: Path to the input R2 FASTQ file.
 * `bc_file::String`: Path to the reference barcode file in TSV format.
 * `output_dir::String`: Path to the directory where demultiplexed files will be saved.
+
 **Optional Arguments**
 
 * `max_error_rate::Float64 = 0.22`: Maximum permissible error rate for sequence assignment.
