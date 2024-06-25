@@ -34,7 +34,7 @@ execute_demultiplexing(file_R1, bc_file, output_dir)
 BioDemultiplexer supports parallel computing, allowing faster processing of large datasets:
 ```Julia
 using Distributed
-add procs(n)# 'n' is the number of desired workers.
+addprocs(n)# 'n' is the number of desired workers.
 @everywhere using BioDemultiplexer
 execute_demultiplexing(file_R1, file_R2, bc_file, output_dir)
 ``` 

@@ -3,33 +3,35 @@ This function aligns `query` and `ref` strings, using semiglobal alignment algor
 # Returns
 A similarity score as a float, where higher values indicate better alignment.(0<=similarity_score<=1)
 """
-function semiglobal_alignment(query::String, ref::String; m::Int = Base.length(query), n::Int = Base.length(ref), match::Int = 0, mismatch::Int = -1, indel::Int = -1)
-	if m == 0 || n == 0
-		return 0
-	end
-	DP = [indel * i for i in 1:m] # Initialize the DP vector.
-	# Run DP column by column.
-	for j in 1:n
-		previous_score = 0
-		for i in 1:m
-			insertion_score = DP[i] + (i == m ? 0 : indel)#→
-			deletion_score = previous_score + indel#↓
-			substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
-			if i != 1
-				DP[i-1] = previous_score
-			end
-			previous_score = max(insertion_score, deletion_score, substitution_score)
-		end
-		DP[m] = previous_score
-	end
+# function semiglobal_alignment(query::String, ref::String; m::Int = Base.length(query), n::Int = Base.length(ref), match::Int = 0, mismatch::Int = -1, indel::Int = -1)
+# 	if m == 0 || n == 0
+# 		return 0
+# 	end
+# 	DP = [indel * i for i in 1:m] # Initialize the DP vector.
+# 	# Run DP column by column.
+# 	for j in 1:n
+# 		previous_score = 0
+# 		for i in 1:m
+# 			insertion_score = DP[i] + (i == m ? 0 : indel)#→
+# 			deletion_score = previous_score + indel#↓
+# 			substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
+# 			if i != 1
+# 				DP[i-1] = previous_score
+# 			end
+# 			previous_score = max(insertion_score, deletion_score, substitution_score)
+# 		end
+# 		DP[m] = previous_score
+# 	end
 
-	return 1 + DP[m] / m
-end
+# 	return 1 + DP[m] / m
+# end
 
 """
 Fast version of semiglobal_alignment function.
 """
-function semiglobal_alignment(query::String, ref::String, max_error::Float64; m::Int = Base.length(query), n::Int = Base.length(ref), match::Int = 0, mismatch::Int = 1, indel::Int = 1)
+function semiglobal_alignment(query::String, ref::String, max_error::Float64; match::Int = 0, mismatch::Int = 1, indel::Int = 1)
+	m = Base.length(query)
+	n = Base.length(ref)
 	if m == 0 || n == 0
 		return 0
 	end
@@ -39,8 +41,8 @@ function semiglobal_alignment(query::String, ref::String, max_error::Float64; m:
 	lact = allowed_error
 	for j in 1:n
 		lact = min(lact, m - 1)
-		if m - allowed_error - n + j > 1
-			fact = m - allowed_error - n + j
+		if m - div(allowed_error, indel) - (allowed_error% indel == 0 ? 0 : 1) - n + j > 1
+			fact = m - div(allowed_error, indel) - (allowed_error % indel == 0 ? 0 : 1)- n + j
 			previous_score = allowed_error
 		else
 			fact = 1
@@ -72,14 +74,13 @@ Calculate and compare the similarity of a given sequence seq with the sequences 
 # Returns
 A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
 """
-function find_best_matching_bc(seq::String, bc_df::DataFrame, max_error_rate::Float64)
-	max_score = -1.0
-	sub_max_score = -1.0
+function find_best_matching_bc(seq::String, bc_df::DataFrame, max_error_rate::Float64, mismatch::Int, indel::Int)
+	max_score = -Inf
+	sub_max_score = -Inf
 	max_score_bc = 0
-	lenseq = length(seq)
 
 	for (i, row) in enumerate(eachrow(bc_df))
-		similarity_score = semiglobal_alignment(row.Full_seq, seq, max_error_rate, n = lenseq)
+		similarity_score = semiglobal_alignment(row.Full_seq, seq, max_error_rate, mismatch = mismatch, indel = indel)
 
 		if similarity_score >= 1.0 - max_error_rate
 			if similarity_score > max_score
@@ -96,8 +97,8 @@ function find_best_matching_bc(seq::String, bc_df::DataFrame, max_error_rate::Fl
 	return max_score_bc, delta
 end
 
-function determine_filename(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64)
-	max_score_bc, delta = find_best_matching_bc(seq, bc_df, max_error_rate)
+function determine_filename(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64, mismatch::Int, indel::Int)
+	max_score_bc, delta = find_best_matching_bc(seq, bc_df, max_error_rate, mismatch, indel)
 
 	if max_score_bc == 0
 		return "/unknown.fastq"
@@ -117,7 +118,7 @@ end
 """
 Compare each sequence in the fastq_R1 file with the sequences in bc_df, and classify the sequences of the specified file based on that comparison.
 """
-function classify_sequences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, classify_both = false)
+function classify_sequences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, mismatch::Int = 1, indel::Int = 1, classify_both = false)
 	if classify_both
 		mkdir(output_dir * "/R1")
 		mkdir(output_dir * "/R2")
@@ -181,7 +182,7 @@ function classify_sequences(fastq_R1::String, fastq_R2::String, bc_df::DataFrame
 	end
 end
 
-function classify_sequences(fastq_R1::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64)
+function classify_sequences(fastq_R1::String, bc_df::DataFrame, output_dir::String, max_error_rate::Float64, min_delta::Float64, mismatch::Int = 1, indel::Int = 1)
 	open(fastq_R1, "r") do file
 		header, seq, plus, quality_score = "", "", "", ""
 		mode = "header"
@@ -198,7 +199,7 @@ function classify_sequences(fastq_R1::String, bc_df::DataFrame, output_dir::Stri
 				mode = "quality_score"
 			elseif mode == "quality_score"
 				quality_score = line
-				filename = determine_filename(seq, bc_df, max_error_rate, min_delta)
+				filename = determine_filename(seq, bc_df, max_error_rate, min_delta, mismatch, indel)
 				write_fastq_entry(output_dir * filename, header, seq, plus, quality_score)
 				mode = "header"
 			end
