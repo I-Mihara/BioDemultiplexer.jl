@@ -26,33 +26,30 @@ A similarity score as a float, where higher values indicate better alignment.(0<
 # 	return 1 + DP[m] / m
 # end
 
-"""
-Fast version of semiglobal_alignment function.
-"""
 function semiglobal_alignment(query::String, ref::String, max_error::Float64; match::Int = 0, mismatch::Int = 1, indel::Int = 1)
 	m = Base.length(query)
 	n = Base.length(ref)
 	if m == 0 || n == 0
-		return 0
+		return Inf
 	end
+	score = Inf
 	allowed_error = floor(max_error * m) |> Int
 	DP = [indel * i for i in 1:m] # Initialize the DP vector.
 	# Run DP column by column.
-	lact = allowed_error
+	lact = min(allowed_error + 1, m)
 	for j in 1:n
-		lact = min(lact, m - 1)
-		if m - div(allowed_error, indel) - (allowed_error% indel == 0 ? 0 : 1) - n + j > 1
-			fact = m - div(allowed_error, indel) - (allowed_error % indel == 0 ? 0 : 1)- n + j
+		if m - div(allowed_error, indel) - n + j >= 1#
+			fact = m - div(allowed_error, indel) - n + j#
 			previous_score = allowed_error
 		else
 			fact = 1
 			previous_score = 0
 		end
-		if fact > lact + 1
-			return 0
+		if fact > lact
+			return score / m
 		end
-		for i in fact:lact+1
-			insertion_score = DP[i] + (i == m ? 0 : indel)#→
+		for i in fact:lact
+			insertion_score = (i == m ? Inf : DP[i]+indel)#→#→
 			deletion_score = previous_score + indel#↓
 			substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
 			if i != 1
@@ -60,52 +57,123 @@ function semiglobal_alignment(query::String, ref::String, max_error::Float64; ma
 			end
 			previous_score = min(insertion_score, deletion_score, substitution_score)
 		end
-		DP[lact+1] = previous_score
-		while lact > -1 && DP[lact+1] > allowed_error
+		DP[lact] = previous_score
+		while lact > 0 && DP[lact] > allowed_error
 			lact -= 1
 		end
-		lact += 1
+		if lact == m
+			score=min(score,previous_score)
+		else
+			lact += 1
+		end
 	end
-	return 1 - DP[m] / m
+	return score / m
 end
 
+
+# function semiglobal_alignment(query::String, ref::String, max_error::Float64; match::Int = 0, mismatch::Int = 1, indel::Int = 1)
+# 	m = Base.length(query)
+# 	n = Base.length(ref)
+# 	if m == 0 || n == 0
+# 		return -Inf
+# 	end
+# 	allowed_error = floor(max_error * m) |> Int
+# 	DP = [indel * i for i in 1:m] # Initialize the DP vector.
+# 	score = Inf
+# 	# Run DP column by column.
+# 	fact = 1
+# 	lact = allowed_error
+# 	for j in 1:n
+# 		lact = min(lact, m - 1)
+# 		if m-div(allowed_error,indel) - n + j >= 2
+# 		# if indel * (m-n+j-1) > allowed_error#m-div(allowed_error,indel) - n + j >= 2
+# 			fact = max(fact,m - div(allowed_error, indel) - n + j)
+# 			previous_score = allowed_error
+# 			while (indel*(m-n+j-fact)+ DP[fact-1]) > max_error
+# 				fact+=1
+# 				if fact > lact + 1
+# 					break
+# 				end
+# 			end
+# 		elseif m-div(allowed_error,indel) - n + j == 1
+# 			fact = 1
+# 			previous_score = allowed_error
+# 			if indel*(m-n+j-fact) > max_error
+# 				fact+=1
+# 				while (indel*(m-n+j-fact)+ DP[fact-1]) > max_error
+# 					fact+=1
+# 					if fact > lact + 1
+# 						break
+# 					end
+# 				end
+# 			end
+# 		else
+# 			fact = 1
+# 			previous_score = 0
+# 		end
+# 		if fact > lact + 1
+# 			return -Inf
+# 		end
+# 		for i in fact:lact+1
+# 			insertion_score = (i == m ? Inf : DP[i] + indel)#→
+# 			deletion_score = previous_score + indel#↓
+# 			substitution_score = (i == 1 ? 0 : DP[i-1]) + (query[i] == ref[j] ? match : mismatch)#↘︎
+# 			if i != 1
+# 				DP[i-1] = previous_score
+# 			end
+# 			previous_score = min(insertion_score, deletion_score, substitution_score)
+# 		end
+# 		if lact == m-1
+# 			score=min(score,previous_score)
+# 		else
+# 			DP[lact+1] = previous_score
+# 		end
+# 		while lact > -1 && DP[lact+1] > allowed_error
+# 			lact -= 1
+# 		end
+# 		lact += 1
+# 	end
+# 	return 1 - score / m
+# end
+
 """
+#変えた。
 Calculate and compare the similarity of a given sequence seq with the sequences in the given DataFrame bc_df.
 # Returns
 A tuple `(max_score_bc, delta)`, where `max_score_bc` is the index of the best matching sequence in `bc_df`, and `delta` is the difference between the highest and second-highest scores.
 """
 function find_best_matching_bc(seq::String, bc_df::DataFrame, max_error_rate::Float64, mismatch::Int, indel::Int)
-	max_score = -Inf
-	sub_max_score = -Inf
-	max_score_bc = 0
+	min_score = Inf
+	sub_min_score = Inf
+	min_score_bc = 0
 
 	for (i, row) in enumerate(eachrow(bc_df))
-		similarity_score = semiglobal_alignment(row.Full_seq, seq, max_error_rate, mismatch = mismatch, indel = indel)
+		alignment_score = semiglobal_alignment(row.Full_seq, seq, max_error_rate, mismatch = mismatch, indel = indel)
 
-		if similarity_score >= 1.0 - max_error_rate
-			if similarity_score > max_score
-				sub_max_score = max_score
-				max_score = similarity_score
-				max_score_bc = i
-			elseif similarity_score > sub_max_score
-				sub_max_score = similarity_score
+		if alignment_score <= max_error_rate
+			if alignment_score < min_score
+				sub_min_score = min_score
+				min_score = alignment_score
+				min_score_bc = i
+			elseif alignment_score < sub_min_score
+				sub_min_score = alignment_score
 			end
 		end
 	end
 
-	delta = max_score - sub_max_score
-	return max_score_bc, delta
+	delta = sub_min_score - min_score
+	return min_score_bc, delta
 end
 
 function determine_filename(seq::String, bc_df::DataFrame, max_error_rate::Float64, min_delta::Float64, mismatch::Int, indel::Int)
-	max_score_bc, delta = find_best_matching_bc(seq, bc_df, max_error_rate, mismatch, indel)
+	min_score_bc, delta = find_best_matching_bc(seq, bc_df, max_error_rate, mismatch, indel)
 
-	if max_score_bc == 0
+	if min_score_bc == 0
 		return "/unknown.fastq"
 	elseif delta < min_delta
 		return "/ambiguous_classification.fastq"
 	else
-		return "/" * string(bc_df.ID[max_score_bc]) * ".fastq"
+		return "/" * string(bc_df.ID[min_score_bc]) * ".fastq"
 	end
 end
 
