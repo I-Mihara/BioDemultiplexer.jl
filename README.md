@@ -1,9 +1,7 @@
-# BioDemultiplexer.jl
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://I-Mihara.github.io/BioDemultiplexer.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://I-Mihara.github.io/BioDemultiplexer.jl/dev/)
-[![Build Status](https://github.com/I-Mihara/BioDemultiplexer.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/I-Mihara/BioDemultiplexer.jl/actions/workflows/CI.yml?query=branch%3Amain)
+# Deprecated: BioDemultiplexer.jl
 
-BioDemultiplexer is a Julia package designed for demultiplexing reads based on barcodes. It efficiently classifies sequences from FASTQ files, making it a valuable tool in bioinformatics workflows.
+## Important Notice
+This repository contains the legacy version of BioDemuX.jl and no longer maintained. We strongly encourage you to migrate to the updated version to take advantage of the latest features and improvements. The updated version is now available [here](https://github.com/I-Mihara/BioDemuX.jl)
 
 ## Usage
 The primary function of this package is `execute_demultiplexing()`. It classifies sequences in an R2 FASTQ file by calculating similarity scores from R1 sequences and barcodes in a reference file. Usage is as follows:
